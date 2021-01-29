@@ -1,58 +1,69 @@
-const { Task } = require('../models')
+const { Task, Category } = require('../models')
 
 class taskControl {
     static async readAll (req, res) {
         try {
-            const readAll = await Task.findAll()
+            const readAll = await Task.findAll({ order: [['date', 'ASC']] })
             res.status(200).json(readAll)
         } catch (err) {
-            res.status(500).json(err)
+            console.log(err)
+            res.status(500).json({
+                msg: 'Error in internal server'
+            })
         }
     }
     static async create (req, res) {
-        const { title, category } = req.body
+        const { title, CategoryId } = req.body
         const date = new Date()
-        const UserId = req.body.UserId
-        // console.log(UserId);
+        const UserId = req.user.id
+
         try {
             const create = await Task.create({
                 title,
-                category,
-                date
+                CategoryId,
+                date,
+                UserId
             })
             res.status(201).json({
                 title,
-                category,
-                date
+                CategoryId,
+                date,
+                UserId
             })
         } catch (err) {
-            res.status(500).json(err)
+            res.status(500).json({
+                msg: "Error in internal server"
+            })
         }
     }
     static async update (req, res) {
-        const { title, category } = req.body
-        const date = new Date()
-        let id = req.params.id
+        // console.log(req.user);
         try {
+            let id = req.params.id
+            const input = {
+                title: req.body.title,
+                date: new Date(),
+                CategoryId: req.body.CategoryId
+            }
             const search = await Task.findByPk(id)
-            if (search) {
-                const update = await Task.update({title, category, date},
+            if (!search) {
+                res.status(404).json({
+                    msg: 'Data is undefind'
+                })
+            } else {
+                const update = await Task.update(input,
                 { where: { id }
                 })
                 res.status(200).json({
-                    // id,
-                    title,
-                    category,
-                    UserId: search.UserId,
-                    date
-                })
-            } else {
-                res.status(400).json({
-                    msg: 'Data is undefind'
+                    title: search.title,
+                    date: search.date,
+                    CategoryId: search.CategoryId
                 })
             }
         } catch (err) {
-            res.status(500).json(err)
+            res.status(500).json({
+                msg: "Error in internal server"
+            })
         }
     }
     static async delete (req, res) {
@@ -64,15 +75,17 @@ class taskControl {
                     where: { id }
                 })
                 res.status(200).json({
-                    msg: 'Delete taks success'
+                    msg: 'Delete task success'
                 })
             } else {
-                res.status(400).json({
+                res.status(404).json({
                     msg: 'Data is undefind'
                 })
             }
         } catch (err) {
-            res.status(500).json(err)
+            res.status(500).json({
+                msg: 'Error in internal server'
+            })
         }
     }
 }

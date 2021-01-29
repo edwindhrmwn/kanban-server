@@ -8,16 +8,27 @@ class userControl {
     static async register (req, res) {
         const { email, password, username } = req.body
         try {
-            const create = await User.create({
-                email, password, username
+            const find = await User.findOne({
+                where: { email }
             })
-            res.status(201).json({
-                email: create.email, 
-                password: create.password, 
-                username: create.username
-            })
+            if (!find) {
+                const create = await User.create({
+                    email, password, username
+                })
+                res.status(201).json({
+                    id: create.id,
+                    username: create.username,
+                    email: create.email,
+                })
+            } else {
+                res.status(400).json({
+                    msg: 'This email already register'
+                })
+            }
         } catch (err) {
-            res.status(500).json(err)
+            res.status(500).json({
+                msg: 'Error in internal server',
+            })
         }
     }
     static async login (req, res) {
@@ -27,15 +38,17 @@ class userControl {
             const dataBase = await User.findOne({
                 where : { email }
             })
-            // console.log(dataBase);
             if (!dataBase) {
                 res.status(401).json({
                     msg: 'Email or password is undefined'
                 })
             } else {
                 const good = comparePassword(password, dataBase.password)
-                // console.log(dataBase.dataValues);
-                if (good) {
+                if (!good) {
+                    res.status(401).json({
+                        msg: 'Email or password is undefined'
+                    })
+                } else {
                     const data = {
                         id: dataBase.id,
                         email: dataBase.email,
@@ -44,27 +57,26 @@ class userControl {
                     res.status(200).json({
                         access_token
                     })
-                } else {
-                    res.status(401).json({
-                        msg: 'Email or password is undefined'
-                    })
+
                 }
             }
         } catch (err) {
-            res.status(500).json(err)
+            res.status(500).json({
+                msg: 'Error in internal server'
+            })
         }
     }
     static async googleLogin (req, res) {
-        const google_token = req.body.google_token
         try {
+            const {id_token } = req.body
             const client = new OAuth2Client(CLIENT_ID);
             const ticket = await client.verifyIdToken({
-                idToken: google_token,
+                idToken: id_token,
                 audience: process.env.GOOGLE_KEY,
             });
             const payload = ticket.getPayload();
             const find = await User.findOne({
-                where: {email: payload.email}
+                where: { email: payload.email }
             })
             if (find) {
                 const access_token = generateToken({
@@ -83,7 +95,7 @@ class userControl {
                     id: newUser.id,
                     email: newUser.email
                 })
-                res.status(200).json({
+                res.status(201).json({
                     access_token
                 })
             }
